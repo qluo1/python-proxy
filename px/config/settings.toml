@@ -1,2 +1,7 @@
 #
-ports = [33101, ]
+listen_ports = [8081, ]
+
+
+parent_proxy = ["asia-proxy-vip.web.gs.com", "cfcdc2.web.gs.com"]
+parent_proxy_port = 85
+

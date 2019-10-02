@@ -35,6 +35,7 @@ class AuthTable(object):
 
 async def prepare_ciphers(cipher, reader, writer, bind=None, server_side=True):
     if cipher:
+        log.info("prepare ciphers: %s", cipher)
         cipher.pdecrypt = cipher.pdecrypt2 = cipher.pencrypt = cipher.pencrypt2 = DUMMY
         for plugin in cipher.plugins:
             if server_side:
@@ -116,7 +117,7 @@ async def stream_handler(
             **kwargs,
         )
 
-        log.info("lproto: %s", lproto.name)
+        log.info("lproto: %s, reader_cipher: %s", lproto.name, reader_cipher)
 
         if host_name == "echo":
             asyncio.ensure_future(lproto.channel(reader, writer, DUMMY, DUMMY))
@@ -598,9 +599,14 @@ class ProxyURI(object):
     async def prepare_ciphers_and_headers(
         self, reader_remote, writer_remote, host, port, handler
     ):
-        log.info("prepare_ciphers_and_headers: %s, %s, %s", host, port, handler)
+        log.info(
+            "prepare_ciphers_and_headers: %s, %s, %s, %s",
+            host,
+            port,
+            handler,
+            self.direct,
+        )
         if not self.direct:
-            log.info("not direct :%s", self.direct)
             if not handler or not handler.ready:
                 _, writer_cipher_r = await prepare_ciphers(
                     self.cipher, reader_remote, writer_remote, self.bind

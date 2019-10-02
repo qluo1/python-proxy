@@ -23,7 +23,7 @@ from .handle import Proxy
 cur_dir = Path(__file__).resolve().parent
 root_dir = cur_dir.parent
 log_dir = root_dir / "log"
-log_file = log_dir / "sockserver.log"
+log_file = log_dir / "px.log"
 log_level = os.environ.get("LOG_LEVEL", "DEBUG")
 
 LOG_CFG = {
@@ -77,7 +77,7 @@ def main():
         settings = toml.load(str(config.resolve()))
 
         settings = Box(settings)
-        ports = settings.ports
+        ports = settings.listen_ports
         print(f"listen on {ports}")
 
         manager = Proxy(settings)
@@ -87,11 +87,11 @@ def main():
         try:
             for port in ports:
                 port = int(port)
-                loop.create_task(
+                loop.run_until_complete(
                     asyncio.start_server(manager.handle_client, "0.0.0.0", port)
                 )
 
-            loop.run_forever()
+                loop.run_forever()
 
         except KeyboardInterrupt:
             # cleanup
@@ -99,7 +99,6 @@ def main():
         except RuntimeError as e:
             log.exception(e)
         finally:
-            # loop.run_until_complete(manager.close())
             loop.close()
             del me
     else:

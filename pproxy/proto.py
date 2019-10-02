@@ -1,7 +1,11 @@
 import asyncio, socket, urllib.parse, time, re, base64, hmac, struct, hashlib, io, os
+import logging
+import binascii
 
 HTTP_LINE = re.compile("([^ ]+) +(.+?) +(HTTP/[^ ]+)$")
 packstr = lambda s, n=1: len(s).to_bytes(n, "big") + s
+
+log = logging.getLogger(__name__)
 
 
 async def socks_address_stream(reader, n):
@@ -59,10 +63,12 @@ class BaseProtocol:
         raise Exception(f"{self.name} don't support client")
 
     async def channel(self, reader, writer, stat_bytes, stat_conn):
+        log.info("channel %s, %s", reader, writer)
         try:
             stat_conn(1)
             while True:
                 data = await reader.read_()
+                log.debug("data: %d \n%s", len(data), binascii.b2a_hex(data))
                 if not data:
                     break
                 if stat_bytes is None:
@@ -399,6 +405,7 @@ class HTTP(BaseProtocol):
 
     async def http_channel(self, reader, writer, stat_bytes, stat_conn):
         try:
+            log.info("http channel %s, %s", reader, writer)
             stat_conn(1)
             while True:
                 data = await reader.read_()
