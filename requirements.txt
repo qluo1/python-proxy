@@ -1,0 +1,9 @@
+#
+pytest
+pytest-asyncio
+hexdump
+
+# dev
+# uvloop
+toml
+python-box
