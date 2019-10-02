@@ -1,6 +1,9 @@
 import argparse, time, re, asyncio, functools, base64, random, urllib.parse, socket
 from . import proto
 from .__doc__ import *
+import logging
+
+log = logging.getLogger(__name__)
 
 SOCKET_TIMEOUT = 300
 PACKET_SIZE = 65536
@@ -92,6 +95,14 @@ async def stream_handler(
             server_ip = writer.get_extra_info("sockname")[0]
             remote_text = f"{remote_ip}:{remote_port}"
         local_addr = None if server_ip in ("127.0.0.1", "::1", None) else (server_ip, 0)
+
+        log.info(
+            "stream_handler remote ip: %s, port: %s, local_addr: %s",
+            remote_ip,
+            remote_port,
+            local_addr,
+        )
+
         reader_cipher, _ = await prepare_ciphers(
             cipher, reader, writer, server_side=False
         )
@@ -104,6 +115,9 @@ async def stream_handler(
             sock=writer.get_extra_info("socket"),
             **kwargs,
         )
+
+        log.info("lproto: %s", lproto.name)
+
         if host_name == "echo":
             asyncio.ensure_future(lproto.channel(reader, writer, DUMMY, DUMMY))
         elif host_name == "empty":
@@ -128,6 +142,7 @@ async def stream_handler(
                 writer_remote.close()
                 raise Exception("Unknown remote protocol")
             m = modstat(remote_ip, host_name)
+            log.info("initbuf: %s", initbuf)
             lchannel = lproto.http_channel if initbuf else lproto.channel
             asyncio.ensure_future(
                 lproto.channel(
@@ -382,6 +397,7 @@ class BackwardConnection(object):
 
 class ProxyURI(object):
     def __init__(self, **kw):
+        log.info("ProxyURI construct: %s", kw)
         self.__dict__.update(kw)
         self.total = 0
         self.udpmap = {}
@@ -482,6 +498,7 @@ class ProxyURI(object):
         )
 
     async def open_connection(self, host, port, local_addr, lbind):
+        log.info("open_connection: %s, %s, %s, %s", host, port, local_addr, lbind)
         if self.reuse or self.ssh:
             if (
                 self.streams is None
@@ -571,6 +588,7 @@ class ProxyURI(object):
         return reader, writer
 
     def prepare_connection(self, reader_remote, writer_remote, host, port):
+        log.info("prepare_connection: %s, %s", reader_remote, writer_remote)
         if self.reuse and not self.handler:
             self.handler = self.rproto.get_handler(reader_remote, writer_remote, DUMMY)
         return self.prepare_ciphers_and_headers(
@@ -580,7 +598,9 @@ class ProxyURI(object):
     async def prepare_ciphers_and_headers(
         self, reader_remote, writer_remote, host, port, handler
     ):
+        log.info("prepare_ciphers_and_headers: %s, %s, %s", host, port, handler)
         if not self.direct:
+            log.info("not direct :%s", self.direct)
             if not handler or not handler.ready:
                 _, writer_cipher_r = await prepare_ciphers(
                     self.cipher, reader_remote, writer_remote, self.bind
@@ -617,6 +637,7 @@ class ProxyURI(object):
         return reader_remote, writer_remote
 
     def start_server(self, args):
+        log.info("start_server: %s", args)
         handler = functools.partial(
             reuse_stream_handler if self.reuse else stream_handler, **vars(self), **args
         )
@@ -935,12 +956,13 @@ def main():
             print("Missing library: pip3 install python-daemon")
             return
     # Try to use uvloop instead of the default event loop
-    try:
-        __import__("uvloop").install()
-        print("Using uvloop")
-    except ModuleNotFoundError:
-        pass
+    # try:
+    #     __import__("uvloop").install()
+    #     print("Using uvloop")
+    # except ModuleNotFoundError:
+    #     pass
     loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     if args.v:
         from . import verbose
 
