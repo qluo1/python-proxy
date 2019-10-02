@@ -2,4 +2,4 @@
 .venv
 data
 log
-ntlmaps/server.cfg
+__pycache__
