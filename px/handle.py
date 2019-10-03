@@ -26,8 +26,8 @@ asyncio.StreamReader.read_until = lambda self, s: asyncio.wait_for(
     self.readuntil(s), timeout=SOCKET_TIMEOUT
 )
 
-HTTP_LINE = re.compile("([^ ]+) +(.+?) +(HTTP/[^ ]+)$")
-HTTP_RESP_LINE = re.compile("^(HTTP/[^ ]+) +(\d+?) +(.+?)$")
+HTTP_LINE = re.compile(r"([^ ]+) +(.+?) +(HTTP/[^ ]+)$")
+HTTP_RESP_LINE = re.compile(r"^(HTTP/[^ ]+) +(\d+?) +(.+?)$")
 
 # packstr = lambda s, n=1: len(s).to_bytes(n, "big") + s
 
@@ -106,40 +106,6 @@ async def http_channel(reader: StreamReader, writer: StreamWriter):
         log.exception(ex)
     finally:
         writer.close()
-
-
-async def test_ssl_handshake(reader, writer, remote_reader, remote_writer):
-    """
-
-    """
-
-    while True:
-        try:
-
-            data = await reader.read_()
-            if not data:
-                log.warning("<-- EOF: %s", reader.at_eof())
-                break
-            log.info("<-- \n%s", binascii.b2a_hex(data))
-
-            remote_writer.write(data)
-            await remote_writer.drain()
-
-            resp = await remote_reader.read_()
-            if not resp:
-                log.warning("<-- EOF: %s", remote_reader.at_eof())
-                break
-            log.info("--> \n%s", binascii.b2a_hex(resp))
-
-            writer.write(resp)
-            await writer.drain()
-
-        except Exception as e:
-            log.exception(e)
-            break
-        finally:
-            remote_writer.close()
-            writer.close()
 
 
 class Proxy(object):

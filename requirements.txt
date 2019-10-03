@@ -6,3 +6,5 @@ hexdump
 # uvloop
 toml
 python-box
+#
+python-ntlm
