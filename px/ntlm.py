@@ -251,7 +251,7 @@ def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
         len(msg1),
     )
     msg1 += Workstation + DomainName
-    msg1 = base64.encodestring(msg1)
+    msg1 = base64.encodebytes(msg1)
     msg1 = msg1.replace(b"\n", b"")
     return msg1
 
@@ -300,7 +300,7 @@ def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFla
     Workstation = gethostname().upper()
     DomainName = domain.upper()
     UserName = user
-    EncryptedRandomSessionKey = ""
+    EncryptedRandomSessionKey = b""
     if is_unicode:
         Workstation = Workstation.encode("utf-16-le")
         DomainName = DomainName.encode("utf-16-le")
@@ -317,7 +317,7 @@ def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFla
         (NtChallengeResponse, LmChallengeResponse) = ntlm2sr_calc_resp(
             pwhash, nonce, ClientChallenge
         )  # ='\x39 e3 f4 cd 59 c5 d8 60')
-    Signature = "NTLMSSP\0"
+    Signature = b"NTLMSSP\0"
     MessageType = struct.pack("<I", 3)  # type 3
 
     DomainNameLen = struct.pack("<H", len(DomainName))
