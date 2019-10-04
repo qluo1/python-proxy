@@ -3,7 +3,8 @@
 """
 import re
 import asyncio
-from multidict import MultiDict
+from multidict import CIMultiDict as MultiDict
+from px import ntlm
 import pytest
 
 asyncio.StreamReader.read_until = lambda self, s: asyncio.wait_for(
@@ -48,5 +49,28 @@ async def test_connect():
     print(reqs)
 
     assert reqs.getall("Proxy-Authenticate") == ["NEGOTIATE", "NTLM"]
+
+    # ntlm auth
+    reqs["Connection"] = "Keep-Alive"
+
+    user = "luosam"
+    domain = "FIRMWIDE"
+    pwd = "test"
+    # if len(user_parts) == 1:
+    #     UserName = user_parts[0]
+    #     DomainName = ""
+    #     type1_flags = ntlm.NTLM_TYPE1_FLAGS & ~ntlm.NTLM_NegotiateOemDomainSupplied
+    # else:
+    #     DomainName = user_parts[0].upper()
+    #     UserName = user_parts[1]
+
+    type1_flags = ntlm.NTLM_TYPE1_FLAGS
+    # ntlm secures a socket, so we must use the same socket for the complete handshake
+    # headers.update(req.unredirected_hdrs)
+    auth = "NTLM %s" % ntlm.create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags)
+    reqs["Proxy-Authenticate"] = auth
+    print(reqs)
+
+    # write response
 
     writer.close()

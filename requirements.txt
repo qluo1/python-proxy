@@ -8,3 +8,4 @@ toml
 python-box
 #
 python-ntlm
+multidict
