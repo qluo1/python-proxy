@@ -1,3 +1,4 @@
+import os
 import sys
 import logging
 import http.client
@@ -39,7 +40,8 @@ def test_urllib3():
     # print(resp)
     print(resp.headers.items())
     body = resp.read()
-    pwd = ""
+    pwd = os.environ.get("NTLM_PWD")
+    assert pwd, "please supply NTLM_PWD as envrionment variable"
 
     context = NtlmContext(
         "luosam", pwd, domain="FIRMWIDE", workstation=socket.gethostname()
@@ -52,7 +54,7 @@ def test_urllib3():
     print(resp.headers.items())
 
     body = resp.read()
-    # print(body)
+    logging.debug(body)
     assert resp.status == 407
 
     token = resp.headers["Proxy-Authenticate"]
