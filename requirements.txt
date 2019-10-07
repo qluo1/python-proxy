@@ -7,5 +7,5 @@ hexdump
 toml
 python-box
 #
-python-ntlm
 multidict
+ntlm-auth

@@ -3,10 +3,12 @@
 """
 import logging
 import time
+import socket
 import re
+import base64
 import asyncio
 from multidict import CIMultiDict as MultiDict
-from px import ntlm
+from ntlm_auth.ntlm import NtlmContext
 import pytest
 
 
@@ -36,10 +38,17 @@ async def test_connect():
 
     # write connect
     remote = f"{remote_host}:{remote_port}"
-    writer.write(f"CONNECT {remote} HTTP/1.1\r\nHost: {remote}\r\n\r\n".encode())
+    req = (
+        f"CONNECT {remote} HTTP/1.1\r\nHost: {remote}\r\n"
+        + "User-Agent: Mozilla/4.0 (compatible; MSIE 5.5; Windows 98)\r\n"
+        + "Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/vnd.ms-excel, application/msword, application/vnd.ms-powerpoint, */*"
+        + "Proxy-Connection: Keep-Alive\r\n\r\n"
+    ).encode()
+    log.info("req: %s", req)
+    writer.write(req)
 
     await writer.drain()
-    log.info("write connect")
+    log.info("write connect done")
 
     headers = await reader.read_until(b"\r\n\r\n")
     headers = headers.decode()
@@ -66,61 +75,41 @@ async def test_connect():
     body_length = int(reqs["Content-Length"])
 
     body = await reader.read_n(body_length)
-    log.info(body)
+    # log.info(body)
 
     user = "luosam"
     domain = "FIRMWIDE"
     pwd = "test"
+    context = NtlmContext(user, pwd, domain=domain, workstation=socket.gethostname())
     # ntlm auth -- step 1
-
-    type1_flags = ntlm.NTLM_TYPE1_FLAGS
-    # ntlm secures a socket, so we must use the same socket for the complete handshake
-    # headers.update(req.unredirected_hdrs)
-    auth = b"NTLM " + ntlm.create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags)
+    auth = base64.b64encode(context.step())
     # write connect
     remote = f"{remote_host}:{remote_port}"
-
     request = (
         f"CONNECT {remote} HTTP/1.1\r\nHost: {remote}\r\n"
         + "User-Agent: Mozilla/4.0 (compatible; MSIE 5.5; Windows 98)\r\n"
-        + "Proxy-Connection: Keep-Alive\r\nPragma: no-cache\r\n"
+        + "Proxy-Connection: Keep-Alive\r\n"
         + "Accept: */*\r\n"
-        + f"Proxy-authorization: {auth.decode()}\r\n\r\n"
+        + f"Proxy-Authorization: NTLM {auth.decode()}\r\n\r\n"
     )
 
     log.info("request: \n%s", request)
 
     writer.write(request.encode())
-
     await writer.drain()
-    # check response
 
-    # if len(user_parts) == 1:
-    #     UserName = user_parts[0]
-    #     DomainName = ""
-    #     type1_flags = ntlm.NTLM_TYPE1_FLAGS & ~ntlm.NTLM_NegotiateOemDomainSupplied
-    # else:
-    #     DomainName = user_parts[0].upper()
-    #     UserName = user_parts[1]
+    # check response
     time.sleep(1)
     log.info("reader: %s, writer: %s", reader, writer)
 
-    while True:
+    headers = await reader.read_until(b"\r\n\r\n")
+    headers = headers.decode()
+    assert headers
+    print(headers)
+    headers = headers.split("\r\n")
 
-        try:
-            headers = await reader.read_until(b"\r\n\r\n")
-            if not headers:
-                break
-            headers = headers.decode()
-            assert headers
-            print(headers)
-            headers = headers.split("\r\n")
-
-            header = headers.pop(0)
-            print(header)
-
-        except asyncio.streams.IncompleteReadError:
-            pass
+    header = headers.pop(0)
+    print(header)
 
     version, code, message = HTTP_RESP_LINE.match(header).groups()
 
