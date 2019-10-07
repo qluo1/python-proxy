@@ -16,12 +16,11 @@
 
 from . import des_c
 
-# ---------------------------------------------------------------------
+
 class DES:
 
     des_c_obj = None
 
-    # -----------------------------------------------------------------
     def __init__(self, key_str):
         ""
         k = str_to_key56(key_str)
@@ -31,12 +30,10 @@ class DES:
             key_str += chr(i & 0xFF)
         self.des_c_obj = des_c.DES(key_str)
 
-    # -----------------------------------------------------------------
     def encrypt(self, plain_text):
         ""
         return self.des_c_obj.encrypt(plain_text)
 
-    # -----------------------------------------------------------------
     def decrypt(self, crypted_text):
         ""
         return self.des_c_obj.decrypt(crypted_text)
@@ -48,22 +45,22 @@ class DES:
 
 DESException = "DESException"
 
-# ---------------------------------------------------------------------
+
 def str_to_key56(key_str):
     ""
-    if type(key_str) != type(""):
-        # rise DESException, 'ERROR. Wrong key type.'
-        pass
+    if not isinstance(key_str, bytes):
+        raise DESException("ERROR. Wrong key type.")
+        # pass
     if len(key_str) < 7:
-        key_str = key_str + "\000\000\000\000\000\000\000"[: (7 - len(key_str))]
+        key_str = key_str + b"\000\000\000\000\000\000\000"[: (7 - len(key_str))]
     key_56 = []
     for i in key_str[:7]:
-        key_56.append(ord(i))
+        # key_56.append(ord(i))
+        key_56.append(i)
 
     return key_56
 
 
-# ---------------------------------------------------------------------
 def key56_to_key64(key_56):
     ""
     key = []
@@ -84,7 +81,6 @@ def key56_to_key64(key_56):
     return key
 
 
-# ---------------------------------------------------------------------
 def set_key_odd_parity(key):
     ""
     for i in range(len(key)):

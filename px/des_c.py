@@ -183,9 +183,10 @@ class DES:
 
     def decrypt(self, str):
         # block - UChar[]
+        assert isinstance(str, bytes)
         block = []
         for i in str:
-            block.append(ord(i))
+            block.append(i)
         # print block
         block = des_ecb_encrypt(block, self.KeySched, 0)
         res = ""
@@ -195,9 +196,10 @@ class DES:
 
     def encrypt(self, str):
         # block - UChar[]
+        assert isinstance(str, bytes)
         block = []
         for i in str:
-            block.append(ord(i))
+            block.append(i)
         block = des_ecb_encrypt(block, self.KeySched, 1)
         res = ""
         for i in block:
@@ -214,6 +216,8 @@ def des_encript(input, ks, encrypt):
     # l, r, t, u - U32
     # i - int
     # s - U32[]
+
+    assert isinstance(input, list)
 
     l = input[0]
     r = input[1]
