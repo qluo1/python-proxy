@@ -182,8 +182,6 @@ class Proxy(object):
 
         headers = await reader.read_until(b"\r\n\r\n")
         headers = headers.decode()
-        assert headers
-        print(headers)
         headers = headers.split("\r\n")
         header = headers.pop(0)
         log.info(header)
