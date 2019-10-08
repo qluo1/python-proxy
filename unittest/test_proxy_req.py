@@ -1,6 +1,7 @@
 """
 
 """
+import os
 import logging
 import time
 import socket
@@ -27,6 +28,19 @@ asyncio.StreamReader.read_n = lambda self, n: asyncio.wait_for(
 HTTP_RESP_LINE = re.compile(r"^(HTTP/[^ ]+) +(\d+?) +(.+?)$")
 
 
+def parse_response_headers(response):
+
+    header, _ = response.split("\r\n\r\n", 1)
+
+    lines = header.split("\r\n")
+    headers = MultiDict()
+    for ln in lines[1:]:
+        k, v = ln.split(":", 1)
+        headers.add(k, v)
+
+    return headers
+
+
 @pytest.mark.asyncio
 async def test_connect():
 
@@ -35,20 +49,24 @@ async def test_connect():
     host = "asia-proxy-vip.web.gs.com"
     port = 85
     reader, writer = await asyncio.open_connection(host, port)
+    pwd = os.environ.get("NTLM_PWD")
+    assert pwd
+    context = NtlmContext(
+        "luosam", pwd, domain="FIRMWIDE", workstation=socket.gethostname()
+    )
 
     # write connect
     remote = f"{remote_host}:{remote_port}"
     req = (
         f"CONNECT {remote} HTTP/1.1\r\nHost: {remote}\r\n"
         + "User-Agent: Mozilla/4.0 (compatible; MSIE 5.5; Windows 98)\r\n"
-        + "Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/vnd.ms-excel, application/msword, application/vnd.ms-powerpoint, */*"
-        + "Proxy-Connection: Keep-Alive\r\n\r\n"
+        + "Accept: */*"
+        + "Proxy-Connection: Keep-Alive\r\n"
+        + f"Proxy-Authorization: NTLM {base64.b64encode(context.step()).decode()}\r\n\r\n"
     ).encode()
     log.info("req: %s", req)
     writer.write(req)
-
     await writer.drain()
-    log.info("write connect done")
 
     headers = await reader.read_until(b"\r\n\r\n")
     headers = headers.decode()
@@ -70,19 +88,14 @@ async def test_connect():
         reqs.add(k.strip(), v.strip())
     print(reqs)
 
-    assert reqs.getall("Proxy-Authenticate") == ["NEGOTIATE", "NTLM"]
+    token = reqs.get("Proxy-Authenticate")
+    assert token
 
     body_length = int(reqs["Content-Length"])
 
     body = await reader.read_n(body_length)
-    # log.info(body)
+    log.debug(body)
 
-    user = "luosam"
-    domain = "FIRMWIDE"
-    pwd = "test"
-    context = NtlmContext(user, pwd, domain=domain, workstation=socket.gethostname())
-    # ntlm auth -- step 1
-    auth = base64.b64encode(context.step())
     # write connect
     remote = f"{remote_host}:{remote_port}"
     request = (
@@ -90,7 +103,7 @@ async def test_connect():
         + "User-Agent: Mozilla/4.0 (compatible; MSIE 5.5; Windows 98)\r\n"
         + "Proxy-Connection: Keep-Alive\r\n"
         + "Accept: */*\r\n"
-        + f"Proxy-Authorization: NTLM {auth.decode()}\r\n\r\n"
+        + f"Proxy-Authorization: NTLM {base64.b64encode(context.step(base64.b64decode(token[5:].encode()))).decode()}\r\n\r\n"
     )
 
     log.info("request: \n%s", request)
