@@ -82,7 +82,7 @@ def main():
 
         manager = Proxy(settings)
         loop = asyncio.get_event_loop()
-        loop.set_debug(True)
+        # loop.set_debug(True)
 
         try:
             for port in ports:
