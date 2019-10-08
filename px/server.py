@@ -11,20 +11,20 @@ import argparse
 import asyncio
 
 # from subprocess import Popen, PIPE
-# import uvloop
+import uvloop
 import toml
 from box import Box
 from .singleton import SingleInstance
 from .handle import Proxy
 
 # using uvloop
-# asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 cur_dir = Path(__file__).resolve().parent
 root_dir = cur_dir.parent
 log_dir = root_dir / "log"
 log_file = log_dir / "px.log"
-log_level = os.environ.get("LOG_LEVEL", "DEBUG")
+log_level = os.environ.get("LOG_LEVEL", "INFO")
 
 LOG_CFG = {
     "version": 1,
