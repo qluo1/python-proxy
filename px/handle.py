@@ -4,17 +4,15 @@
 import re
 import urllib.parse
 import logging
-import binascii
 import asyncio
 from asyncio import StreamReader, StreamWriter
 import socket
-
-# import hexdump
+import base64
+from ntlm_auth.ntlm import NtlmContext
+from multidict import CIMultiDict as MultiDict
 
 SOCKET_TIMEOUT = 300
 PACKET_SIZE = 65536
-
-EOD_HTTP_REQ = b"\r\n\r\n"
 
 
 # help for stream reader
@@ -29,7 +27,6 @@ asyncio.StreamReader.read_until = lambda self, s: asyncio.wait_for(
 HTTP_LINE = re.compile(r"([^ ]+) +(.+?) +(HTTP/[^ ]+)$")
 HTTP_RESP_LINE = re.compile(r"^(HTTP/[^ ]+) +(\d+?) +(.+?)$")
 
-# packstr = lambda s, n=1: len(s).to_bytes(n, "big") + s
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +40,7 @@ async def parse_http_request_header(reader: StreamReader, writer: StreamWriter):
     lines = await reader.read_until(b"\r\n\r\n")
     headers = lines[:-1].decode().split("\r\n")
     method, path, ver = HTTP_LINE.match(headers.pop(0)).groups()
-    log.info("original req: %s", lines)
+    log.debug("original req: %s", lines)
     url = urllib.parse.urlparse(path)
     #
     lines = "\r\n".join(i for i in headers if not i.startswith("Proxy-") and i.strip())
@@ -80,7 +77,9 @@ async def http_channel(reader: StreamReader, writer: StreamWriter):
                 break
 
             # http header
-            if b"\r\n" in data and HTTP_LINE.match(data.split(b"\r\n", 1)[0].decode()):
+            if b"\r\n" in data and HTTP_LINE.match(
+                data.split(b"\r\n", 1)[0].decode("utf8", "ignore")
+            ):
                 if b"\r\n\r\n" not in data:
                     data += await reader.readuntil(b"\r\n\r\n")
 
@@ -115,49 +114,84 @@ class Proxy(object):
 
     def __init__(self, settings):
         """ """
-
         self.settings = settings
+        self.ntlm_proxy = settings.ntlm_proxy
+        self.ntlm_user = settings.ntlm_proxy_user
+        self.ntlm_domain = settings.ntlm_proxy_domain
+        self.ntlm_pwd = base64.b64decode(settings.ntlm_proxy_pwd).decode()
 
-        self.proxies = []
+    async def proxy_auth_ntml(self, remote_host, remote_port):
+        """ ntlm auth """
 
-        for proxy in settings.parent_proxy:
-            self.proxies.append((proxy, settings.parent_proxy_port))
+        context = NtlmContext(
+            self.ntlm_user,
+            self.ntlm_pwd,
+            domain=self.ntlm_domain,
+            workstation=socket.gethostname(),
+        )
+        reader, writer = await asyncio.open_connection(*self.ntlm_proxy)
+        # write connect
+        remote = f"{remote_host}:{remote_port}"
+        req = (
+            f"CONNECT {remote} HTTP/1.1\r\nHost: {remote}\r\n"
+            + "User-Agent: Mozilla/4.0 (compatible; MSIE 5.5; Windows 98)\r\n"
+            + "Accept: */*\r\n"
+            + "Proxy-Connection: Keep-Alive\r\n"
+            + f"Proxy-Authorization: NTLM {base64.b64encode(context.step()).decode()}\r\n\r\n"
+        ).encode()
+        log.debug("req: %s", req)
+        writer.write(req)
+        await writer.drain()
 
-    async def get_parent_proxy(self, remote_host, remote_port):
+        headers = await reader.read_until(b"\r\n\r\n")
+        headers = headers.decode()
+        assert headers
+        log.debug(headers)
 
-        for proxy in self.proxies:
+        headers = headers.split("\r\n")
+        header = headers.pop(0)
 
-            try:
-                reader, writer = await asyncio.open_connection(*proxy)
-                # authenticate
-                remote = f"{remote_host}:{remote_port}"
-                writer.write(
-                    f"CONNECT {remote} HTTP/1.1\r\nHost: {remote}\r\n\r\n".encode()
-                )
+        version, code, message = HTTP_RESP_LINE.match(header).groups()
 
-                await writer.drain()
+        assert int(code) == 407
+        assert message == "Proxy Authentication Required"
+        reqs = MultiDict()
+        for k, v in [ln.split(":", 1) for ln in headers if ln]:
+            reqs.add(k.strip(), v.strip())
 
-                lines = await reader.read_until(b"\r\n\r\n")
-                headers = lines[:-1].decode().split("\r\n")
-                version, code, message = HTTP_RESP_LINE.match(headers.pop(0)).groups()
-                log.info("proxy response: %s", lines)
-                # prepare ntll auth
-                if (
-                    code == "407"
-                    and message == "Proxy Authentication Required"
-                    and "Proxy-Authenticate" in lines
-                    and "NTLM" in lines
-                ):
-                    pass
+        token = reqs.get("Proxy-Authenticate")
+        assert token
 
-                # proxy ready to be used
-                return reader, writer
+        body_length = int(reqs["Content-Length"])
+        body = await reader.read_n(body_length)
+        log.debug(body)
 
-            except Exception as e:
-                log.exception(e)
-                writer.close()
+        # write connect
+        remote = f"{remote_host}:{remote_port}"
+        request = (
+            f"CONNECT {remote} HTTP/1.1\r\nHost: {remote}\r\n"
+            + "User-Agent: Mozilla/4.0 (compatible; MSIE 5.5; Windows 98)\r\n"
+            + "Proxy-Connection: Keep-Alive\r\n"
+            + "Accept: */*\r\n"
+            + f"Proxy-Authorization: NTLM {base64.b64encode(context.step(base64.b64decode(token[5:].encode()))).decode()}\r\n\r\n"
+        )
+        log.info("request: \n%s", request)
 
-            raise ValueError("no proxy available")
+        writer.write(request.encode())
+        await writer.drain()
+
+        headers = await reader.read_until(b"\r\n\r\n")
+        headers = headers.decode()
+        assert headers
+        print(headers)
+        headers = headers.split("\r\n")
+        header = headers.pop(0)
+        log.info(header)
+        version, code, message = HTTP_RESP_LINE.match(header).groups()
+        if int(code) == 200:
+            return reader, writer
+        else:
+            raise ValueError(f"auth failed: {header}")
 
     async def handle_client(self, reader: StreamReader, writer: StreamWriter):
         """ handle incoming clent session
@@ -171,17 +205,17 @@ class Proxy(object):
             remote_host, remote_port, req = await parse_http_request_header(
                 reader, writer
             )
-            # check dns
+
+            # check dns if unknown using proxy for external host
             try:
                 socket.gethostbyname(remote_host)
 
                 remote_reader, remote_writer = await asyncio.open_connection(
                     remote_host, remote_port
                 )
-
             except socket.gaierror:
                 # must via internal proxy
-                remote_reader, remote_writer = await self.get_parent_proxy(
+                remote_reader, remote_writer = await self.proxy_auth_ntml(
                     remote_host, remote_port
                 )
 
@@ -189,6 +223,5 @@ class Proxy(object):
             remote_writer.write(req)
             asyncio.create_task(http_channel(reader, remote_writer))
             asyncio.create_task(http_channel(remote_reader, writer))
-
         except Exception as ex:
             log.exception(ex)

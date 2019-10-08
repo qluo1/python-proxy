@@ -17,10 +17,10 @@ class WritableObject:
         pass
 
 
-sys.stdout = WritableObject()
+# sys.stdout = WritableObject()
 
 
-def test_urllib3():
+def test_http_auth():
     """ """
     host = "asia-proxy-vip.web.gs.com"
     port = 85
@@ -37,7 +37,7 @@ def test_urllib3():
 
     resp = conn.getresponse()
     assert resp.status == 407
-    # print(resp)
+    # print(resp.msg)
     print(resp.headers.items())
     body = resp.read()
     pwd = os.environ.get("NTLM_PWD")
@@ -54,7 +54,7 @@ def test_urllib3():
     print(resp.headers.items())
 
     body = resp.read()
-    logging.debug(body)
+    logging.debug("body: %s", body)
     assert resp.status == 407
 
     token = resp.headers["Proxy-Authenticate"]

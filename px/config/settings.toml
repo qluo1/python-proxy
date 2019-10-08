@@ -1,7 +1,8 @@
 #
 listen_ports = [8081, ]
 
-
-parent_proxy = ["asia-proxy-vip.web.gs.com", "cfcdc2.web.gs.com"]
-parent_proxy_port = 85
+ntlm_proxy = ["asia-proxy-vip.web.gs.com", "85"]
+ntlm_proxy_user = "luosam"
+ntlm_proxy_pwd = "c0FNZU1vbmRheTE="
+ntlm_proxy_domain = "FIRMWIDE"
 
