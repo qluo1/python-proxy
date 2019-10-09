@@ -1,0 +1,13 @@
+# dev
+pytest
+pytest-asyncio
+hexdump
+
+uvloop
+toml
+python-box
+#
+multidict
+ntlm-auth
+requests
+requests_kerberos
