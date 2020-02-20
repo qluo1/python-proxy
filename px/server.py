@@ -90,6 +90,7 @@ def main():
                 loop.run_until_complete(
                     asyncio.start_server(manager.handle_client, "0.0.0.0", port)
                 )
+                log.info("start server on %s", port)
 
                 loop.run_forever()
 

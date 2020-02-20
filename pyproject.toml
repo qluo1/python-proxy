@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "px"
+version = "0.1.0"
+description = ""
+authors = ["[Luo, Samuel <samuel.luo@hk.email.gs.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+uvloop = "^0.14.0"
+toml = "^0.10.0"
+python-box = "^4.0.4"
+ntlm-auth = "^1.4.0"
+requests = "^2.23.0"
+requests_kerberos = "^0.12.0"
+
+[[tool.poetry.source]]
+name = "gspypi"
+url = "https://pypi.site.gs.com/simple"
+default = true
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

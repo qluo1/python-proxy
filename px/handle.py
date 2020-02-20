@@ -10,9 +10,11 @@ import socket
 import base64
 from ntlm_auth.ntlm import NtlmContext
 from multidict import CIMultiDict as MultiDict
+import requests
+from requests_kerberos import HTTPKerberosAuth
 
 SOCKET_TIMEOUT = 300
-PACKET_SIZE = 65536
+PACKET_SIZE = 2 ** 16  # 64K
 
 
 # help for stream reader
@@ -48,6 +50,7 @@ async def parse_http_request_header(reader: StreamReader, writer: StreamWriter):
 
     if method == "CONNECT":
         host_name, port = path.split(":", 1)
+        log.info("connect :%s %s", host_name, port)
         port = int(port)
         writer.write(f"{ver} 200 OK\r\n Connection: close\r\n\r\n".encode())
         return host_name, port, b""
@@ -63,7 +66,7 @@ async def parse_http_request_header(reader: StreamReader, writer: StreamWriter):
         return (host_name, port, req)
 
 
-async def http_channel(reader: StreamReader, writer: StreamWriter):
+async def http_channel(reader: StreamReader, writer: StreamWriter, cookie: str):
     """ channel HTTP reader to writer
 
     """
@@ -87,17 +90,23 @@ async def http_channel(reader: StreamReader, writer: StreamWriter):
                 headers = lines[:-1].decode().split("\r\n")
                 method, path, ver = HTTP_LINE.match(headers.pop(0)).groups()
 
+                # set cookie
+                if method.upper() in ("GET", "POST") and cookie:
+                    headers.append(f"Cookie:{cookie}")
+
                 # remove proxy
                 lines = "\r\n".join(
                     i for i in headers if not i.startswith("Proxy-") and i.strip()
                 )
 
-                headers = dict(i.split(": ", 1) for i in headers if ": " in i)
                 newpath = (
                     urllib.parse.urlparse(path)._replace(netloc="", scheme="").geturl()
                 )
-                data = f"{method} {newpath} {ver}\r\n{lines}\r\n\r\n".encode() + data
+                header = f"{method} {newpath} {ver}\r\n{lines}\r\n\r\n"
+                data = header.encode() + data
+                log.info("write http header : %s", header)
 
+            # log.debug("write data: %s", data)
             writer.write(data)
             await writer.drain()
 
@@ -111,7 +120,6 @@ class Proxy(object):
     """
 
     """
-
     def __init__(self, settings):
         """ """
         self.settings = settings
@@ -119,6 +127,18 @@ class Proxy(object):
         self.ntlm_user = settings.ntlm_proxy_user
         self.ntlm_domain = settings.ntlm_proxy_domain
         self.ntlm_pwd = base64.b64decode(settings.ntlm_proxy_pwd).decode()
+
+        try:
+
+            auth = HTTPKerberosAuth()
+            req_session = requests.session()
+            req_session.get(
+                    "https://authn.web.gs.com/desktopsso/Login", auth=auth, verify=True
+                    ).raise_for_status()
+            self.cookie = f"GSSSO={req_session.cookies['GSSSO']}"
+        except Exception as e:
+            log.exception(e)
+            self.cookie = ""
 
     async def proxy_auth_ntml(self, remote_host, remote_port):
         """ ntlm auth """
@@ -189,7 +209,7 @@ class Proxy(object):
         if int(code) == 200:
             return reader, writer
         else:
-            raise ValueError(f"auth failed: {header}")
+            raise ValueError(f"auth failed: {header} \n {headers}")
 
     async def handle_client(self, reader: StreamReader, writer: StreamWriter):
         """ handle incoming clent session
@@ -205,12 +225,16 @@ class Proxy(object):
             )
 
             # check dns if unknown using proxy for external host
+            cookie = ""
             try:
                 socket.gethostbyname(remote_host)
 
                 remote_reader, remote_writer = await asyncio.open_connection(
                     remote_host, remote_port
                 )
+
+                # internal
+                cookie = self.cookie
             except socket.gaierror:
                 # must via internal proxy
                 remote_reader, remote_writer = await self.proxy_auth_ntml(
@@ -219,7 +243,7 @@ class Proxy(object):
 
             # write
             remote_writer.write(req)
-            asyncio.create_task(http_channel(reader, remote_writer))
-            asyncio.create_task(http_channel(remote_reader, writer))
+            asyncio.create_task(http_channel(reader, remote_writer, cookie))
+            asyncio.create_task(http_channel(remote_reader, writer, cookie))
         except Exception as ex:
             log.exception(ex)
