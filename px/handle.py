@@ -33,7 +33,7 @@ HTTP_RESP_LINE = re.compile(r"^(HTTP/[^ ]+) +(\d+?) +(.+?)$")
 log = logging.getLogger(__name__)
 
 
-async def parse_http_request_header(reader: StreamReader, writer: StreamWriter):
+async def parse_http_request_header(reader: StreamReader, writer: StreamWriter, cookie):
     """ parsing client initial HTTP request header
 
     return target host/port request message
@@ -60,9 +60,20 @@ async def parse_http_request_header(reader: StreamReader, writer: StreamWriter):
         host_name = url.hostname
         port = url.port or 80
         newpath = url._replace(netloc="", scheme="").geturl()
-
         req = f"{method} {newpath} {ver}\r\n{lines}\r\n\r\n".encode()
-        log.debug("new req: %s", req)
+
+        try:
+            # gs host set cookie
+            socket.gethostbyname(host_name)
+            # set cookie
+            log.info("set cookie: %s", cookie)
+            if method.upper() in ("GET", "POST") and cookie:
+                req = f"{method} {newpath} {ver}\r\n{lines}\r\nCookie:{cookie}\r\n\r\n".encode()
+
+        except Exception as ex:
+            log.info("external site :%s", ex)
+
+        log.info("new req: %s:%s %s", host_name, port, req)
         return (host_name, port, req)
 
 
@@ -220,12 +231,13 @@ class Proxy(object):
 
         try:
 
+            cookie = self.cookie
+
             remote_host, remote_port, req = await parse_http_request_header(
-                reader, writer
+                reader, writer, self.cookie
             )
 
             # check dns if unknown using proxy for external host
-            cookie = ""
             try:
                 socket.gethostbyname(remote_host)
 
@@ -234,7 +246,6 @@ class Proxy(object):
                 )
 
                 # internal
-                cookie = self.cookie
             except socket.gaierror:
                 # must via internal proxy
                 remote_reader, remote_writer = await self.proxy_auth_ntml(
