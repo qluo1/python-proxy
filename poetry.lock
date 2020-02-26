@@ -1,5 +1,17 @@
 [[package]]
 category = "main"
+description = "Extensible memoizing collections and decorators"
+name = "cachetools"
+optional = false
+python-versions = "~=3.5"
+version = "4.0.0"
+
+[package.source]
+reference = "gspypi"
+url = "http://pypi.site.gs.com/simple"
+
+[[package]]
+category = "main"
 description = "Python package for providing Mozilla's CA Bundle."
 name = "certifi"
 optional = false
@@ -91,6 +103,18 @@ url = "http://pypi.site.gs.com/simple"
 
 [[package]]
 category = "main"
+description = "Cross-platform lib for process and system monitoring in Python."
+name = "psutil"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "5.7.0"
+
+[package.source]
+reference = "gspypi"
+url = "http://pypi.site.gs.com/simple"
+
+[[package]]
+category = "main"
 description = "C parser in Python"
 marker = "python_version != \"3.3\""
 name = "pycparser"
@@ -126,6 +150,24 @@ version = "4.0.4"
 [package.dependencies]
 "ruamel.yaml" = "*"
 toml = "*"
+
+[package.source]
+reference = "gspypi"
+url = "http://pypi.site.gs.com/simple"
+
+[[package]]
+category = "main"
+description = "PIDFile context processor. Supported py2 and py3"
+name = "python-pidfile"
+optional = false
+python-versions = "*"
+version = "3.0.0"
+
+[package.dependencies]
+psutil = "*"
+
+[package.extras]
+develop = ["coverage (!=4.3)", "coveralls", "pylava", "pytest", "pytest-cov", "mock"]
 
 [package.source]
 reference = "gspypi"
@@ -276,10 +318,14 @@ reference = "gspypi"
 url = "http://pypi.site.gs.com/simple"
 
 [metadata]
-content-hash = "901fb45a1126e106cd20c39b0e844804c8b2df021d9af3e1ec0f063dcab1c611"
+content-hash = "955cb1b66f23f4c9e71f4bdbf9abe60e56bff3a3c4c0943a089d163a3acfd60a"
 python-versions = "^3.7"
 
 [metadata.files]
+cachetools = [
+    {file = "cachetools-4.0.0-py3-none-any.whl", hash = "sha256:b304586d357c43221856be51d73387f93e2a961598a9b6b6670664746f3b6c6c"},
+    {file = "cachetools-4.0.0.tar.gz", hash = "sha256:9a52dd97a85f257f4e4127f15818e71a0c7899f121b34591fcc1173ea79a0198"},
+]
 certifi = [
     {file = "certifi-2019.11.28-py2.py3-none-any.whl", hash = "sha256:017c25db2a153ce562900032d5bc68e9f191e44e9a0f762f373977de9df1fbb3"},
     {file = "certifi-2019.11.28.tar.gz", hash = "sha256:25b64c7da4cd7479594d035c08c2d809eb4aab3a26e5a990ea98cc450c320f1f"},
@@ -349,6 +395,19 @@ ntlm-auth = [
     {file = "ntlm-auth-1.4.0.tar.gz", hash = "sha256:350f2389c8ee5517f47db55a36ac2f8efc9742a60a678d6e2caa92385bdcaa9a"},
     {file = "ntlm_auth-1.4.0-py2.py3-none-any.whl", hash = "sha256:11f7a3cec38155b7cecdd9bbc8c37cd738d8012f0523b3f98d8caefe394feb97"},
 ]
+psutil = [
+    {file = "psutil-5.7.0-cp27-none-win32.whl", hash = "sha256:298af2f14b635c3c7118fd9183843f4e73e681bb6f01e12284d4d70d48a60953"},
+    {file = "psutil-5.7.0-cp27-none-win_amd64.whl", hash = "sha256:75e22717d4dbc7ca529ec5063000b2b294fc9a367f9c9ede1f65846c7955fd38"},
+    {file = "psutil-5.7.0-cp35-cp35m-win32.whl", hash = "sha256:f344ca230dd8e8d5eee16827596f1c22ec0876127c28e800d7ae20ed44c4b310"},
+    {file = "psutil-5.7.0-cp35-cp35m-win_amd64.whl", hash = "sha256:e2d0c5b07c6fe5a87fa27b7855017edb0d52ee73b71e6ee368fae268605cc3f5"},
+    {file = "psutil-5.7.0-cp36-cp36m-win32.whl", hash = "sha256:a02f4ac50d4a23253b68233b07e7cdb567bd025b982d5cf0ee78296990c22d9e"},
+    {file = "psutil-5.7.0-cp36-cp36m-win_amd64.whl", hash = "sha256:1413f4158eb50e110777c4f15d7c759521703bd6beb58926f1d562da40180058"},
+    {file = "psutil-5.7.0-cp37-cp37m-win32.whl", hash = "sha256:d008ddc00c6906ec80040d26dc2d3e3962109e40ad07fd8a12d0284ce5e0e4f8"},
+    {file = "psutil-5.7.0-cp37-cp37m-win_amd64.whl", hash = "sha256:73f35ab66c6c7a9ce82ba44b1e9b1050be2a80cd4dcc3352cc108656b115c74f"},
+    {file = "psutil-5.7.0-cp38-cp38-win32.whl", hash = "sha256:60b86f327c198561f101a92be1995f9ae0399736b6eced8f24af41ec64fb88d4"},
+    {file = "psutil-5.7.0-cp38-cp38-win_amd64.whl", hash = "sha256:d84029b190c8a66a946e28b4d3934d2ca1528ec94764b180f7d6ea57b0e75e26"},
+    {file = "psutil-5.7.0.tar.gz", hash = "sha256:685ec16ca14d079455892f25bd124df26ff9137664af445563c1bd36629b5e0e"},
+]
 pycparser = [
     {file = "pycparser-2.19.tar.gz", hash = "sha256:a988718abfad80b6b157acce7bf130a30876d27603738ac39f140993246b25b3"},
 ]
@@ -358,6 +417,10 @@ pykerberos = [
 python-box = [
     {file = "python-box-4.0.4.tar.gz", hash = "sha256:7e1ce38dc153790e304d0b3923dff1d53c9889eaaa8f4cce315bb867b5aee843"},
     {file = "python_box-4.0.4-py3-none-any.whl", hash = "sha256:700952c997c39b94fd4c9799cd94f0a42eb59bc005446055702ae99e50e996b1"},
+]
+python-pidfile = [
+    {file = "python-pidfile-3.0.0.tar.gz", hash = "sha256:1e1097df41bc75f574599ffef89e8b20eff1bdfc9191d3ed264cc2dae95429d0"},
+    {file = "python_pidfile-3.0.0-py3-none-any.whl", hash = "sha256:41d697b48d615d4272a065a5d859163c517e6b8e01e62cff55b8d751968a56a9"},
 ]
 requests = [
     {file = "requests-2.23.0-py2.py3-none-any.whl", hash = "sha256:43999036bfa82904b6af1d99e4882b560e5e2c68e5c4b0aa03b655f3d7d73fee"},

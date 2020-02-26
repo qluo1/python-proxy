@@ -9,12 +9,12 @@ import logging.config
 from pathlib import Path
 import argparse
 import asyncio
+import pidfile
 
 # from subprocess import Popen, PIPE
 import uvloop
 import toml
 from box import Box
-from .singleton import SingleInstance
 from .handle import Proxy
 
 # using uvloop
@@ -71,37 +71,44 @@ def main():
 
     if args.config:
 
-        me = SingleInstance("socketserver")  # noqa
         config = Path(args.config)
         assert config.exists(), f"config file not found: {config}"
         settings = toml.load(str(config.resolve()))
 
-        settings = Box(settings)
-        ports = settings.listen_ports
-        print(f"listen on {ports}")
-
-        manager = Proxy(settings)
-        loop = asyncio.get_event_loop()
-        # loop.set_debug(True)
-
         try:
-            for port in ports:
-                port = int(port)
-                loop.run_until_complete(
-                    asyncio.start_server(manager.handle_client, "0.0.0.0", port)
-                )
-                log.info("start server on %s", port)
 
-                loop.run_forever()
+            with pidfile.PIDFile("python-proxy.pid"):
 
-        except KeyboardInterrupt:
-            # cleanup
-            print("shutting down")
-        except RuntimeError as e:
-            log.exception(e)
-        finally:
-            loop.close()
-            del me
+                settings = Box(settings)
+                ports = settings.listen_ports
+                print(f"listen on {ports}")
+
+                manager = Proxy(settings)
+                loop = asyncio.get_event_loop()
+                # debug asyncio
+                # loop.set_debug(True)
+
+                try:
+                    for port in ports:
+                        port = int(port)
+                        loop.run_until_complete(
+                            asyncio.start_server(manager.handle_client, "0.0.0.0", port)
+                        )
+                        log.info("start server on %s", port)
+
+                        loop.run_forever()
+
+                except KeyboardInterrupt:
+                    # cleanup
+                    print("shutting down")
+                except RuntimeError as e:
+                    log.exception(e)
+                finally:
+                    loop.close()
+
+        except pidfile.AlreadyRunningError:
+            print("already running")
+
     else:
         parser.print_usage()
 
