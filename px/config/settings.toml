@@ -2,7 +2,7 @@
 listen_ports = [8081, ]
 
 ntlm_proxy = ["asia-proxy-vip.web.gs.com", "85"]
-ntlm_proxy_user = "luosam"
-ntlm_proxy_pwd = "c0FNZU1vbmRheTE="
+ntlm_proxy_user = ""
+ntlm_proxy_pwd = "c0FNZU1vbmRheTI="
 ntlm_proxy_domain = "FIRMWIDE"
 

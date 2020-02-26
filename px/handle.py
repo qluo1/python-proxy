@@ -8,6 +8,7 @@ import asyncio
 from asyncio import StreamReader, StreamWriter
 import socket
 import base64
+import getpass
 from ntlm_auth.ntlm import NtlmContext
 from multidict import CIMultiDict as MultiDict
 import requests
@@ -146,7 +147,7 @@ class Proxy(object):
         """ """
         self.settings = settings
         self.ntlm_proxy = settings.ntlm_proxy
-        self.ntlm_user = settings.ntlm_proxy_user
+        self.ntlm_user = settings.ntlm_proxy_user or getpass.getuser()
         self.ntlm_domain = settings.ntlm_proxy_domain
         self.ntlm_pwd = base64.b64decode(settings.ntlm_proxy_pwd).decode()
 
